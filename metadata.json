@@ -1,0 +1,7 @@
+{
+  "name": "Yay Mon Digital Learning Platform",
+  "description": "A digital learning management system built with React, featuring role-based dashboards for admins, teachers, and students. Teachers can leverage the Gemini API to auto-generate course content.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
