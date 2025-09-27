@@ -9,9 +9,9 @@ export const MOCK_USERS: User[] = [
 ];
 
 const MOCK_MODULES: CourseModule[] = [
-    { id: 'm-1', title: 'Introduction to React', content: 'Learn the basics of React, including components, props, and state.'},
-    { id: 'm-2', title: 'State Management', content: 'Explore different state management solutions like Context API and Redux.'},
-    { id: 'm-3', title: 'Advanced Hooks', content: 'Deep dive into useEffect, useCallback, and custom hooks.'},
+    { id: 'm-1', title: 'Introduction to React', content: 'Learn the basics of React, including components, props, and state.', videoUrl: undefined },
+    { id: 'm-2', title: 'State Management', content: 'Explore different state management solutions like Context API and Redux.', videoUrl: undefined },
+    { id: 'm-3', title: 'Advanced Hooks', content: 'Deep dive into useEffect, useCallback, and custom hooks.', videoUrl: undefined },
 ];
 
 export const MOCK_COURSES: Course[] = [
@@ -24,7 +24,6 @@ export const MOCK_COURSES: Course[] = [
     teacherId: 'user-2',
     modules: MOCK_MODULES,
     difficulty: Difficulty.Advanced,
-    introVideoUrl: undefined,
   },
   { 
     id: 'course-2', 
@@ -35,7 +34,6 @@ export const MOCK_COURSES: Course[] = [
     teacherId: 'user-4',
     modules: MOCK_MODULES.slice(0,2).map(m => ({...m, id: `m-${m.id}-2`})),
     difficulty: Difficulty.Beginner,
-    introVideoUrl: undefined,
   },
   { 
     id: 'course-3', 
@@ -46,7 +44,6 @@ export const MOCK_COURSES: Course[] = [
     teacherId: 'user-2',
     modules: MOCK_MODULES.slice(0,1).map(m => ({...m, id: `m-${m.id}-3`})),
     difficulty: Difficulty.Intermediate,
-    introVideoUrl: undefined,
   },
   { 
     id: 'course-4', 
@@ -57,7 +54,6 @@ export const MOCK_COURSES: Course[] = [
     teacherId: 'user-4',
     modules: [],
     difficulty: Difficulty.Beginner,
-    introVideoUrl: undefined,
   },
 ];
 

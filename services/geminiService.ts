@@ -1,3 +1,4 @@
+
 // Fix: Combined imports to adhere to @google/genai guidelines.
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { MOCK_USERS, MOCK_COURSES, MOCK_ENROLLMENTS, MOCK_REVIEWS } from '../context/mockData';
@@ -6,13 +7,18 @@ import { User, Course, Enrollment, Role, UserStatus, EnrollmentStatus, Review, R
 
 let ai: GoogleGenAI | null = null;
 
+// Helper function to centralize the API key check.
+export const isAiConfigured = (): boolean => {
+    return !!process.env.API_KEY;
+};
+
 // Lazily initialize the AI client to prevent crashes on load if the API key is missing.
 const getAiClient = (): GoogleGenAI => {
     if (ai) return ai;
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
         // This specific error message will be caught by the UI components.
-        throw new Error("The AI service is not available due to a configuration issue. Please contact an administrator.");
+        throw new Error("Gemini API key not found. Please set the API_KEY environment variable to use AI features.");
     }
     ai = new GoogleGenAI({ apiKey });
     return ai;
@@ -69,40 +75,6 @@ export const generateCourseContent = async (title: string): Promise<{ descriptio
     throw new Error("Failed to generate course content. Please check your API key and try again.");
   }
 };
-
-export const apiGenerateVideo = async (prompt: string): Promise<string> => {
-  try {
-    const aiInstance = getAiClient();
-    let operation = await aiInstance.models.generateVideos({
-      model: 'veo-2.0-generate-001',
-      prompt: prompt,
-      config: {
-        numberOfVideos: 1
-      }
-    });
-
-    while (!operation.done) {
-      // Wait for 10 seconds before checking the status again
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      operation = await aiInstance.operations.getVideosOperation({ operation: operation });
-    }
-
-    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-
-    if (downloadLink) {
-      return downloadLink;
-    } else {
-      throw new Error("Video generation completed, but no download link was found.");
-    }
-  } catch (error) {
-    console.error("Error generating video with Gemini API:", error);
-     if (error instanceof Error) { // Propagate the specific error message
-        throw error;
-    }
-    throw new Error("Failed to generate video. Please try again later.");
-  }
-};
-
 
 // --- API Simulation Layer ---
 
@@ -302,6 +274,17 @@ export const apiAddCourse = (courseData: Omit<Course, 'id'>): Promise<Course> =>
     courses.push(newCourse);
     saveToDb(DB_KEYS.COURSES, courses);
     return simulateRequest(newCourse);
+};
+
+export const apiUpdateCourse = (updatedCourse: Course): Promise<Course> => {
+    let courses = getFromDb<Course>(DB_KEYS.COURSES);
+    const index = courses.findIndex(c => c.id === updatedCourse.id);
+    if (index > -1) {
+        courses[index] = updatedCourse;
+        saveToDb(DB_KEYS.COURSES, courses);
+        return simulateRequest(courses[index]);
+    }
+    return simulateRequest(null as any, "Course not found.");
 };
 
 // --- Enrollment API ---

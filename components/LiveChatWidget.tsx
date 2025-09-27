@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // Fix: The `LiveSession` type is not exported by the `@google/genai` library. It has been removed from this import.
 import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
 import Spinner from './Spinner';
+import { isAiConfigured } from '../services/geminiService';
 
 // Fix: A local `LiveSession` interface is defined based on its usage within this component
 // to maintain type safety for the session object, as the official type is not exported.
@@ -113,7 +115,8 @@ const LiveChatWidget: React.FC = () => {
         currentInputRef.current = '';
         currentOutputRef.current = '';
         
-        if (!process.env.API_KEY) {
+        // Gracefully handle missing API key before attempting to connect.
+        if (!isAiConfigured()) {
             console.error("Gemini API key is not configured.");
             setStatus('error');
             return;
@@ -254,7 +257,7 @@ const LiveChatWidget: React.FC = () => {
             case 'connecting': return 'Connecting...';
             case 'listening': return 'Listening... ask me anything!';
             case 'speaking': return 'AI Tutor is speaking...';
-            case 'error': return 'AI Tutor unavailable. Please check configuration.';
+            case 'error': return 'AI Tutor unavailable';
             default: return 'Click to start the AI Tutor';
         }
     };
@@ -297,8 +300,8 @@ const LiveChatWidget: React.FC = () => {
                             )}
                              {status === 'error' && (
                                 <div className="text-center text-red-500 dark:text-red-400 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                                    <p className="font-semibold">Connection Error</p>
-                                    <p className="text-sm">The AI Tutor is currently unavailable due to a configuration issue. Please try again later.</p>
+                                    <p className="font-semibold">AI Tutor Unavailable</p>
+                                    <p className="text-sm">The AI Tutor could not be started due to a configuration issue. Please contact an administrator.</p>
                                 </div>
                             )}
                             {transcripts.map(t => (

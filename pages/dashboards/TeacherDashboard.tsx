@@ -1,15 +1,26 @@
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCourseContext } from '../../context/CourseContext';
-import { CourseModule, Difficulty, EnrollmentStatus } from '../../types';
-import { generateCourseContent, apiGenerateVideo } from '../../services/geminiService';
+import { Course, CourseModule, Difficulty, EnrollmentStatus } from '../../types';
+import { generateCourseContent, isAiConfigured } from '../../services/geminiService';
 import Spinner from '../../components/Spinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
 
+// Define the shape of a module within the component's state
+type EditableCourseModule = {
+  id: string;
+  title: string;
+  content: string;
+  videoUrl?: string;
+};
+
 const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { courses, enrollments, addCourse } = useCourseContext();
+  const { courses, enrollments, addCourse, updateCourse } = useCourseContext();
   const [activeTab, setActiveTab] = useState('myCourses');
+  
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   
   // Search state for My Courses
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,17 +30,12 @@ const TeacherDashboard: React.FC = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>(Difficulty.Beginner);
-  const [modules, setModules] = useState<{ id: string; title: string; content: string }[]>([]);
+  const [modules, setModules] = useState<EditableCourseModule[]>([]);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [videoPrompt, setVideoPrompt] = useState('');
-  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
-  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
-  const [videoGenerationMessage, setVideoGenerationMessage] = useState('');
-
-
+  
   // UI state
-  const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -46,6 +52,23 @@ const TeacherDashboard: React.FC = () => {
     variant: 'danger' as 'danger' | 'default',
   });
 
+  useEffect(() => {
+    if (editingCourse) {
+      setTitle(editingCourse.title);
+      setDescription(editingCourse.description);
+      setCategory(editingCourse.category);
+      setDifficulty(editingCourse.difficulty);
+      setModules(editingCourse.modules.map(m => ({ ...m, id: m.id || `mod-${Date.now()}` })));
+      setThumbnailPreview(editingCourse.thumbnail);
+      setThumbnail(editingCourse.thumbnail);
+      setError('');
+      setSuccessMessage('');
+    } else {
+      resetForm();
+    }
+  }, [editingCourse]);
+
+
   if (!user) return null;
 
   const teacherCourses = useMemo(() => courses.filter(c => c.teacherId === user.id), [courses, user.id]);
@@ -59,7 +82,7 @@ const TeacherDashboard: React.FC = () => {
 
   const TABS = {
     myCourses: 'My Courses',
-    createCourse: 'Create New Course'
+    createCourse: editingCourse ? 'Edit Course' : 'Create New Course'
   };
 
   const openConfirmation = (props: Omit<typeof confirmationState, 'isOpen' | 'isConfirming'>) => {
@@ -85,6 +108,16 @@ const TeacherDashboard: React.FC = () => {
       });
     }
   };
+  
+  const handleEditClick = (course: Course) => {
+    setEditingCourse(course);
+    setActiveTab('createCourse');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCourse(null);
+    // The useEffect will trigger resetForm
+  };
 
   const handleGenerateContent = async () => {
     if (!title) {
@@ -99,7 +132,6 @@ const TeacherDashboard: React.FC = () => {
       if (content.modules && content.modules.length > 0) {
         setModules(content.modules.map((m, i) => ({ ...m, id: `mod-${Date.now()}-${i}` })));
       }
-      setVideoPrompt(`Create a short, exciting introductory video for a course titled "${title}". The course is about: ${content.description}. Make it visually engaging and professional.`);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -120,10 +152,7 @@ const TeacherDashboard: React.FC = () => {
     setThumbnail(null);
     setThumbnailPreview(null);
     setError('');
-    setVideoPrompt('');
-    setGeneratedVideoUrl(null);
-    setIsVideoGenerating(false);
-    setVideoGenerationMessage('');
+    setEditingCourse(null);
   };
   
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,50 +168,30 @@ const TeacherDashboard: React.FC = () => {
         setThumbnailPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+      setError('');
     }
   };
 
-  const handleGenerateVideo = async () => {
-    if (!videoPrompt) {
-      setError("Please enter a prompt for the video.");
-      return;
-    }
-    setError('');
-    setIsVideoGenerating(true);
-    setGeneratedVideoUrl(null);
-
-    const messages = [
-      "Contacting the video generation service...",
-      "Generating a script for your video...",
-      "Casting digital actors...",
-      "Rendering the first few scenes...",
-      "This can take a few minutes, please wait...",
-      "Adding special effects...",
-      "Finalizing the video render...",
-      "Almost there...",
-    ];
-    let messageIndex = 0;
-    setVideoGenerationMessage(messages[messageIndex]);
-    const intervalId = setInterval(() => {
-        messageIndex = (messageIndex + 1) % messages.length;
-        setVideoGenerationMessage(messages[messageIndex]);
-    }, 5000);
-
-    try {
-      const videoUrl = await apiGenerateVideo(videoPrompt);
-      setGeneratedVideoUrl(videoUrl);
-      setSuccessMessage('Video generated successfully!');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate video.');
-    } finally {
-      clearInterval(intervalId);
-      setIsVideoGenerating(false);
-      setVideoGenerationMessage('');
+  const handleModuleVideoChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit
+        setError('Video file is too large. Please upload a video under 50MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const newModules = [...modules];
+        newModules[index].videoUrl = reader.result as string;
+        setModules(newModules);
+      };
+      reader.readAsDataURL(file);
+      setError('');
     }
   };
 
-  const handleCreateCourse = async (e: React.FormEvent) => {
+
+  const handleSaveCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !description || !category) {
       setError("Please fill out all main course fields.");
@@ -192,20 +201,21 @@ const TeacherDashboard: React.FC = () => {
       setError("Please fill out the title and content for all modules.");
       return;
     }
-    setIsCreating(true);
+    setIsSaving(true);
     setError('');
     setSuccessMessage('');
     
     try {
-        const finalModules: CourseModule[] = modules.map((mod, index) => ({
-        id: `mod-final-${Date.now()}-${index}`,
-        title: mod.title,
-        content: mod.content
+        const finalModules: CourseModule[] = modules.map((mod) => ({
+          id: mod.id,
+          title: mod.title,
+          content: mod.content,
+          videoUrl: mod.videoUrl
         }));
 
         const thumbnailUrl = thumbnail || `https://picsum.photos/seed/${title.replace(/\s+/g, '-')}/600/400`;
-
-        await addCourse({
+        
+        const courseData = {
           title,
           description,
           category,
@@ -213,10 +223,16 @@ const TeacherDashboard: React.FC = () => {
           thumbnail: thumbnailUrl,
           modules: finalModules,
           difficulty,
-          introVideoUrl: generatedVideoUrl || undefined,
-        });
+        };
         
-        setSuccessMessage('Course created successfully!');
+        if (editingCourse) {
+            await updateCourse({ ...courseData, id: editingCourse.id });
+            setSuccessMessage('Course updated successfully!');
+        } else {
+            await addCourse(courseData);
+            setSuccessMessage('Course created successfully!');
+        }
+        
         setTimeout(() => {
           resetForm();
           setSuccessMessage('');
@@ -224,9 +240,9 @@ const TeacherDashboard: React.FC = () => {
         }, 2000);
 
     } catch(err) {
-      setError("Failed to create the course. Please try again.");
+      setError(`Failed to ${editingCourse ? 'update' : 'create'} the course. Please try again.`);
     } finally {
-      setIsCreating(false);
+      setIsSaving(false);
     }
   };
 
@@ -296,11 +312,16 @@ const TeacherDashboard: React.FC = () => {
           {filteredCourses.length > 0 ? (
             <div className="space-y-4">
               {filteredCourses.map(course => (
-                <a href={`#/courses/${course.id}`} key={course.id} className="block p-4 border dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-gray-50 dark:bg-gray-800 hover:border-primary/50 dark:hover:border-primary">
-                  <h3 className="font-bold text-lg text-dark dark:text-light">{course.title}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{course.description}</p>
-                   <p className="text-sm mt-2 font-semibold text-gray-800 dark:text-gray-200">Enrolled Students: {enrollments.filter(e => e.courseId === course.id && e.status === EnrollmentStatus.Approved).length}</p>
-                </a>
+                 <div key={course.id} className="p-4 border dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow bg-gray-50 dark:bg-gray-800 hover:border-primary/50 dark:hover:border-primary flex justify-between items-center flex-wrap gap-4">
+                  <a href={`#/courses/${course.id}`} className="flex-grow">
+                    <h3 className="font-bold text-lg text-dark dark:text-light">{course.title}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{course.description}</p>
+                    <p className="text-sm mt-2 font-semibold text-gray-800 dark:text-gray-200">Enrolled Students: {enrollments.filter(e => e.courseId === course.id && e.status === EnrollmentStatus.Approved).length}</p>
+                  </a>
+                   <button onClick={() => handleEditClick(course)} className="px-4 py-2 bg-secondary text-white font-semibold rounded-lg hover:bg-red-500 transition-colors text-sm">
+                      Edit
+                    </button>
+                </div>
               ))}
             </div>
           ) : (
@@ -313,12 +334,17 @@ const TeacherDashboard: React.FC = () => {
 
       <div id="tabpanel-createCourse" role="tabpanel" tabIndex={0} aria-labelledby="tab-createCourse" hidden={activeTab !== 'createCourse'}>
         <div>
-          <h2 className="text-xl font-semibold mb-4 text-dark dark:text-light">Create a New Course</h2>
-          <form onSubmit={handleCreateCourse} className="space-y-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-dark dark:text-light">{editingCourse ? 'Edit Course' : 'Create a New Course'}</h2>
+            {editingCourse && (
+              <button onClick={handleCancelEdit} className="text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-primary">Cancel Edit</button>
+            )}
+          </div>
+          <form onSubmit={handleSaveCourse} className="space-y-6">
             {error && <p className="bg-red-100 text-red-700 p-3 rounded-md text-sm">{error}</p>}
              {successMessage && <p className="bg-green-100 text-green-700 p-3 rounded-md text-sm">{successMessage}</p>}
             
-            <fieldset disabled={isGenerating || isCreating} className="space-y-6 transition-opacity duration-300 disabled:opacity-60 disabled:cursor-not-allowed">
+            <fieldset disabled={isGenerating || isSaving} className="space-y-6 transition-opacity duration-300 disabled:opacity-60 disabled:cursor-not-allowed">
               <div>
                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course Title</label>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -331,19 +357,21 @@ const TeacherDashboard: React.FC = () => {
                     required
                     placeholder="e.g., Introduction to Quantum Physics"
                   />
-                  <button
-                    type="button"
-                    onClick={handleGenerateContent}
-                    disabled={isGenerating || !title}
-                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
-                  >
-                    {isGenerating ? <Spinner className="w-5 h-5 mr-2" /> : (
-                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 110-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0V6h-1a1 1 0 010-2h1V3a1 1 0 011-1zM11 13a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                    <span>{isGenerating ? 'Generating...' : 'Generate with AI'}</span>
-                  </button>
+                  {!editingCourse && (
+                    <button
+                      type="button"
+                      onClick={handleGenerateContent}
+                      disabled={isGenerating || !title}
+                      className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                    >
+                      {isGenerating ? <Spinner className="w-5 h-5 mr-2" /> : (
+                        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 110-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0V6h-1a1 1 0 010-2h1V3a1 1 0 011-1zM11 13a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      <span>{isGenerating ? 'Generating...' : 'Generate with AI'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -388,67 +416,6 @@ const TeacherDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Introductory Video (Optional)</h3>
-                <div className="p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg space-y-4">
-                  <div>
-                    <label htmlFor="video-prompt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Video Prompt</label>
-                    <textarea 
-                      id="video-prompt" 
-                      rows={3} 
-                      value={videoPrompt} 
-                      onChange={(e) => setVideoPrompt(e.target.value)} 
-                      className="mt-1 block w-full px-4 py-2 bg-white dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary" 
-                      placeholder="e.g., An energetic and visually appealing 30-second intro for a web development course."
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleGenerateVideo}
-                    disabled={isVideoGenerating || !videoPrompt}
-                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
-                  >
-                    {isVideoGenerating ? <Spinner className="w-5 h-5 mr-2" /> : (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 001.553.832l3-2a1 1 0 000-1.664l-3-2z" />
-                      </svg>
-                    )}
-                    <span>{isVideoGenerating ? 'Generating Video...' : 'Generate Video with AI'}</span>
-                  </button>
-
-                  {isVideoGenerating && (
-                    <div className="text-center p-4 bg-gray-100 dark:bg-gray-700/50 rounded-lg">
-                      <p className="font-semibold text-dark dark:text-light">{videoGenerationMessage}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Video generation can take a few minutes. You can continue editing other fields.</p>
-                    </div>
-                  )}
-
-                  {generatedVideoUrl && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Video Preview:</h4>
-                      {process.env.API_KEY ? (
-                        <video 
-                          key={generatedVideoUrl} 
-                          src={`${generatedVideoUrl}&key=${process.env.API_KEY}`} 
-                          controls
-                          poster={thumbnailPreview || undefined}
-                          className="w-full rounded-lg shadow-md bg-black"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                      ) : (
-                         <div className="w-full aspect-video bg-gray-900 flex flex-col items-center justify-center text-center text-white p-4 rounded-lg relative" role="img" aria-label="Video unavailable">
-                            {thumbnailPreview && <img src={thumbnailPreview} alt="Video poster" className="w-full h-full object-cover absolute inset-0 opacity-20" />}
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                            <p className="font-semibold">Video Unavailable</p>
-                            <p className="text-xs text-gray-400">The video service is not configured.</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
               <div className="pt-2">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Course Modules</h3>
                 <div className="space-y-4">
@@ -465,6 +432,29 @@ const TeacherDashboard: React.FC = () => {
                         <div>
                           <label htmlFor={`module-content-${index}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400">Module Content</label>
                           <textarea id={`module-content-${index}`} rows={3} value={module.content} onChange={(e) => handleModuleChange(index, 'content', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm" placeholder="A brief summary of what this module covers." required />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Module Video (Optional)</label>
+                           {module.videoUrl && (
+                             <div className="my-2">
+                               {isAiConfigured() ? (
+                                   <video src={module.videoUrl} controls className="w-full max-h-48 rounded bg-black"></video>
+                               ) : (
+                                   <div className="w-full max-h-48 rounded bg-gray-100 dark:bg-gray-700/50 flex flex-col items-center justify-center p-4 text-center border border-dashed border-gray-300 dark:border-gray-600">
+                                       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.55a2 2 0 01.95 1.66V18a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h8.04a2 2 0 011.66.95L15 10zM15 10H5m10 0v8" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-4-4-4 4" />
+                                       </svg>
+                                       <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Video unavailable due to configuration issue.</p>
+                                       <p className="text-xs text-gray-500 dark:text-gray-400">Please contact an administrator.</p>
+                                   </div>
+                               )}
+                             </div>
+                           )}
+                           <label htmlFor={`module-video-${index}`} className="mt-1 cursor-pointer w-full inline-flex justify-center bg-white dark:bg-gray-700/80 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                             <span>{module.videoUrl ? 'Change Video' : 'Upload Video'}</span>
+                             <input id={`module-video-${index}`} type="file" className="sr-only" accept="video/*" onChange={(e) => handleModuleVideoChange(index, e)} />
+                           </label>
                         </div>
                       </div>
                       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600/50 flex items-center justify-between">
@@ -509,9 +499,9 @@ const TeacherDashboard: React.FC = () => {
               </div>
             </fieldset>
             
-            <button type="submit" disabled={isCreating || isGenerating || !!successMessage} className="w-full flex items-center justify-center bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105">
-               {isCreating && <Spinner className="w-5 h-5 mr-2" />}
-              {isCreating ? 'Creating...' : 'Create Course'}
+            <button type="submit" disabled={isSaving || isGenerating || !!successMessage} className="w-full flex items-center justify-center bg-primary text-white py-2.5 rounded-lg font-semibold hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all transform hover:scale-105">
+               {isSaving && <Spinner className="w-5 h-5 mr-2" />}
+              {isSaving ? 'Saving...' : (editingCourse ? 'Save Changes' : 'Create Course')}
             </button>
           </form>
         </div>

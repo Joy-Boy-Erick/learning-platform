@@ -1,8 +1,10 @@
+
 import React, { useState, useMemo } from 'react';
 import { useCourseContext } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
 import { EnrollmentStatus, Role, ReviewStatus } from '../types';
 import Spinner from '../components/Spinner';
+import { isAiConfigured } from '../services/geminiService';
 
 interface CourseDetailPageProps {
   courseId: string;
@@ -57,9 +59,6 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
   const userEnrollment = user ? enrollments.find(e => e.studentId === user.id && e.courseId === course.id) : undefined;
   const isEnrolledAndApproved = userEnrollment?.status === EnrollmentStatus.Approved;
   const userHasReviewed = user ? reviews.some(r => r.studentId === user.id && r.courseId === courseId) : false;
-  // Check for API Key to conditionally render video player
-  const apiKey = process.env.API_KEY;
-
 
   const handleEnroll = async () => {
     if (user && user.role === Role.Student) {
@@ -230,6 +229,30 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
                           role="region"
                           aria-labelledby={`module-button-${module.id}`}
                           className="p-5 bg-white dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                          {module.videoUrl && (
+                            <div className="mb-4">
+                              <h4 className="font-semibold text-dark dark:text-light mb-2">Module Video</h4>
+                                {isAiConfigured() ? (
+                                    <video
+                                        key={module.id}
+                                        src={module.videoUrl}
+                                        controls
+                                        className="w-full rounded-lg shadow-md bg-black max-h-96"
+                                    >
+                                        Your browser does not support the video tag.
+                                    </video>
+                                ) : (
+                                    <div className="w-full aspect-video rounded-lg bg-gray-100 dark:bg-gray-700/50 flex flex-col items-center justify-center p-4 text-center border border-dashed border-gray-300 dark:border-gray-600">
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.55a2 2 0 01.95 1.66V18a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h8.04a2 2 0 011.66.95L15 10zM15 10H5m10 0v8" />
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-4-4-4 4" />
+                                      </svg>
+                                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Video unavailable due to configuration issue.</p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">Please contact an administrator.</p>
+                                    </div>
+                                )}
+                            </div>
+                           )}
                          <p className="text-gray-700 dark:text-gray-300 mt-1 prose dark:prose-invert max-w-none">{module.content}</p>
                         </div>
                     )}
@@ -248,26 +271,7 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
         <div className="lg:col-span-1">
           <div className="sticky top-28">
              <div className="rounded-xl shadow-xl overflow-hidden mb-6 border dark:border-gray-700 bg-black">
-                {course.introVideoUrl && apiKey ? (
-                    <video 
-                        key={course.id} 
-                        src={`${course.introVideoUrl}&key=${apiKey}`} 
-                        controls 
-                        poster={course.thumbnail}
-                        className="w-full h-auto object-cover aspect-video"
-                    >
-                        Your browser does not support the video tag. An introductory video is available for this course.
-                    </video>
-                ) : course.introVideoUrl && !apiKey ? (
-                    <div className="w-full aspect-video bg-gray-900 flex flex-col items-center justify-center text-center text-white p-4 relative" role="img" aria-label="Video unavailable">
-                        <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover absolute inset-0 opacity-20" />
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
-                        <p className="font-semibold">Video Unavailable</p>
-                        <p className="text-xs text-gray-400">The video service is not configured.</p>
-                    </div>
-                ) : (
-                    <img src={course.thumbnail} alt={course.title} className="w-full h-auto object-cover" />
-                )}
+                <img src={course.thumbnail} alt={course.title} className="w-full h-auto object-cover" />
              </div>
              <div className="bg-light dark:bg-gray-800 p-6 rounded-xl border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
                 {getEnrollmentButton()}

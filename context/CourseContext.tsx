@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Course, Enrollment, EnrollmentStatus, User, Role, Review, ReviewStatus } from '../types';
 import { useAuth } from './AuthContext';
@@ -6,6 +5,7 @@ import {
     apiFetchCourses, 
     apiFetchEnrollments, 
     apiAddCourse, 
+    apiUpdateCourse,
     apiEnrollInCourse, 
     apiUpdateEnrollmentStatus,
     apiFetchReviews,
@@ -22,6 +22,7 @@ interface CourseContextType {
   students: User[];
   isLoading: boolean;
   addCourse: (course: Omit<Course, 'id'>) => Promise<Course>;
+  updateCourse: (course: Course) => Promise<void>;
   enrollInCourse: (courseId: string, studentId: string) => Promise<Enrollment>;
   updateEnrollmentStatus: (enrollmentId: string, status: EnrollmentStatus) => Promise<void>;
   addReview: (reviewData: Omit<Review, 'id' | 'status' | 'createdAt'>) => Promise<Review>;
@@ -71,6 +72,13 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setCourses(prev => [...prev, newCourse]);
     return newCourse;
   };
+  
+  const updateCourse = async (courseData: Course) => {
+    const updatedCourse = await apiUpdateCourse(courseData);
+    setCourses(prev =>
+      prev.map(c => (c.id === updatedCourse.id ? updatedCourse : c))
+    );
+  };
 
   const enrollInCourse = async (courseId: string, studentId: string) => {
     const newEnrollment = await apiEnrollInCourse(courseId, studentId);
@@ -112,6 +120,7 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       students, 
       isLoading: combinedIsLoading, 
       addCourse, 
+      updateCourse,
       enrollInCourse, 
       updateEnrollmentStatus,
       addReview,
