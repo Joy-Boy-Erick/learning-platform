@@ -18,7 +18,7 @@ const getAiClient = (): GoogleGenAI => {
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
         // This specific error message will be caught by the UI components.
-        throw new Error("Gemini API key not found. Please set the API_KEY environment variable to use AI features.");
+        throw new Error("Gemini API key not found. AI features are disabled. Please contact an administrator to configure the application.");
     }
     ai = new GoogleGenAI({ apiKey });
     return ai;

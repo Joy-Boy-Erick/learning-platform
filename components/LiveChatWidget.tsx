@@ -299,7 +299,7 @@ const LiveChatWidget: React.FC = () => {
                                 </div>
                             )}
                              {status === 'error' && (
-                                <div className="text-center text-red-500 dark:text-red-400 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                                <div role="alert" className="text-center text-red-500 dark:text-red-400 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
                                     <p className="font-semibold">AI Tutor Unavailable</p>
                                     <p className="text-sm">The AI Tutor could not be started due to a configuration issue. Please contact an administrator.</p>
                                 </div>

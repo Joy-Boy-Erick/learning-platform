@@ -440,7 +440,7 @@ const TeacherDashboard: React.FC = () => {
                                {isAiConfigured() ? (
                                    <video src={module.videoUrl} controls className="w-full max-h-48 rounded bg-black"></video>
                                ) : (
-                                   <div className="w-full max-h-48 rounded bg-gray-100 dark:bg-gray-700/50 flex flex-col items-center justify-center p-4 text-center border border-dashed border-gray-300 dark:border-gray-600">
+                                   <div role="alert" className="w-full max-h-48 rounded bg-gray-100 dark:bg-gray-700/50 flex flex-col items-center justify-center p-4 text-center border border-dashed border-gray-300 dark:border-gray-600">
                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.55a2 2 0 01.95 1.66V18a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h8.04a2 2 0 011.66.95L15 10zM15 10H5m10 0v8" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-4-4-4 4" />

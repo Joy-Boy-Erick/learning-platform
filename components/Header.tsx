@@ -45,10 +45,13 @@ const Header: React.FC = () => {
       await logout();
     } catch (error) {
       console.error("Logout failed to sync with the server:", error);
-      // The user is still logged out on the client, so we can proceed with redirection.
+      // The user is still logged out on the client, so we can proceed.
+    } finally {
+      setIsLoggingOut(false);
+      setIsLogoutModalOpen(false);
+      // Redirect after state has been updated to close the modal.
+      window.location.hash = '#/';
     }
-    // Redirect to home page after client-side session is cleared.
-    window.location.hash = '#/';
   };
 
 
