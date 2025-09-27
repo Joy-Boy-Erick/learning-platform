@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveSession, LiveServerMessage, Modality, Blob } from '@google/genai';
 import Spinner from './Spinner';
@@ -73,6 +72,8 @@ const LiveChatWidget: React.FC = () => {
     const nextStartTimeRef = useRef(0);
     const currentInputRef = useRef('');
     const currentOutputRef = useRef('');
+    const widgetRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
 
     const scrollToBottom = () => {
         transcriptsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -85,8 +86,13 @@ const LiveChatWidget: React.FC = () => {
     useEffect(() => {
         if (isOpen) {
             startSession();
+            setTimeout(() => {
+              const closeButton = widgetRef.current?.querySelector('button[aria-label="Close chat"]');
+              (closeButton as HTMLElement)?.focus();
+            }, 100);
         } else {
             stopSession();
+            triggerRef.current?.focus();
         }
         
         return () => {
@@ -244,6 +250,7 @@ const LiveChatWidget: React.FC = () => {
     return (
         <>
             <button
+                ref={triggerRef}
                 onClick={() => setIsOpen(!isOpen)}
                 className="fixed bottom-6 right-6 z-[999] w-16 h-16 bg-primary rounded-full shadow-lg flex items-center justify-center text-white hover:bg-red-700 transform hover:scale-110 transition-all duration-300"
                 aria-label={isOpen ? "Close AI Tutor Chat" : "Open AI Tutor Chat"}
@@ -256,10 +263,14 @@ const LiveChatWidget: React.FC = () => {
             </button>
 
             {isOpen && (
-                <div className="fixed bottom-24 right-6 z-[998] w-[calc(100vw-3rem)] max-w-sm h-[60vh] max-h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col border border-gray-200 dark:border-gray-700 overflow-hidden transform-gpu transition-all duration-300 origin-bottom-right animate-[slide-in_0.3s_ease-out]">
+                <div 
+                  ref={widgetRef}
+                  role="dialog"
+                  aria-labelledby="ai-tutor-title"
+                  className="fixed bottom-24 right-6 z-[998] w-[calc(100vw-3rem)] max-w-sm h-[60vh] max-h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col border border-gray-200 dark:border-gray-700 overflow-hidden transform-gpu transition-all duration-300 origin-bottom-right animate-[slide-in_0.3s_ease-out]">
                     <style>{`@keyframes slide-in { 0% { opacity: 0; transform: translateY(20px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }`}</style>
                     <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                        <h3 className="font-bold text-lg text-dark dark:text-light">Yay Mon AI Tutor</h3>
+                        <h3 id="ai-tutor-title" className="font-bold text-lg text-dark dark:text-light">Yay Mon AI Tutor</h3>
                         <button onClick={() => setIsOpen(false)} className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Close chat">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
@@ -282,7 +293,7 @@ const LiveChatWidget: React.FC = () => {
                             <div ref={transcriptsEndRef} />
                         </div>
                     </main>
-                    <footer className="p-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
+                    <footer role="status" aria-live="polite" className="p-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
                        {status === 'connecting' ? <Spinner className="w-5 h-5 text-primary" /> : (
                             <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${status === 'listening' ? 'text-primary animate-pulse' : ''} ${status === 'speaking' ? 'text-secondary' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-14 0m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                        )}

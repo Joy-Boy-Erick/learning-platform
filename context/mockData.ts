@@ -24,6 +24,7 @@ export const MOCK_COURSES: Course[] = [
     teacherId: 'user-2',
     modules: MOCK_MODULES,
     difficulty: Difficulty.Advanced,
+    introVideoUrl: undefined,
   },
   { 
     id: 'course-2', 
@@ -34,6 +35,7 @@ export const MOCK_COURSES: Course[] = [
     teacherId: 'user-4',
     modules: MOCK_MODULES.slice(0,2).map(m => ({...m, id: `m-${m.id}-2`})),
     difficulty: Difficulty.Beginner,
+    introVideoUrl: undefined,
   },
   { 
     id: 'course-3', 
@@ -44,6 +46,7 @@ export const MOCK_COURSES: Course[] = [
     teacherId: 'user-2',
     modules: MOCK_MODULES.slice(0,1).map(m => ({...m, id: `m-${m.id}-3`})),
     difficulty: Difficulty.Intermediate,
+    introVideoUrl: undefined,
   },
   { 
     id: 'course-4', 
@@ -54,6 +57,7 @@ export const MOCK_COURSES: Course[] = [
     teacherId: 'user-4',
     modules: [],
     difficulty: Difficulty.Beginner,
+    introVideoUrl: undefined,
   },
 ];
 

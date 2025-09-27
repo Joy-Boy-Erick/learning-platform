@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo } from 'react';
 import { useCourseContext } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
@@ -11,10 +9,11 @@ interface CourseDetailPageProps {
 }
 
 const StarRatingDisplay = ({ rating, size = 'h-5 w-5' }: { rating: number, size?: string }) => (
-    <div className="flex items-center">
+    <div className="flex items-center" role="img" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
         {[...Array(5)].map((_, i) => (
         <svg
             key={i}
+            aria-hidden="true"
             className={`${size} ${i < Math.round(rating) ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-500'}`}
             fill="currentColor"
             viewBox="0 0 20 20"
@@ -246,8 +245,20 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
         </div>
         <div className="lg:col-span-1">
           <div className="sticky top-28">
-             <div className="rounded-xl shadow-xl overflow-hidden mb-6 border dark:border-gray-700">
-                <img src={course.thumbnail} alt={course.title} className="w-full h-auto object-cover" />
+             <div className="rounded-xl shadow-xl overflow-hidden mb-6 border dark:border-gray-700 bg-black">
+                {course.introVideoUrl ? (
+                    <video 
+                        key={course.id} 
+                        src={`${course.introVideoUrl}&key=${process.env.API_KEY}`} 
+                        controls 
+                        poster={course.thumbnail}
+                        className="w-full h-auto object-cover aspect-video"
+                    >
+                        Your browser does not support the video tag. An introductory video is available for this course.
+                    </video>
+                ) : (
+                    <img src={course.thumbnail} alt={course.title} className="w-full h-auto object-cover" />
+                )}
              </div>
              <div className="bg-light dark:bg-gray-800 p-6 rounded-xl border border-gray-200/80 dark:border-gray-700/80 shadow-lg">
                 {getEnrollmentButton()}

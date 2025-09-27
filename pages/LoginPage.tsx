@@ -1,5 +1,4 @@
 
-
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/icons/Logo';
@@ -30,6 +29,7 @@ const LoginPage: React.FC = () => {
   const SocialButton = ({ icon, text }: { icon: React.ReactNode, text: string }) => (
     <button
       type="button"
+      aria-label={`Continue with ${text}`}
       className="w-full inline-flex justify-center items-center py-2.5 px-4 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700/80 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
     >
       {icon}

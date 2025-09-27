@@ -1,10 +1,10 @@
-
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCourseContext } from '../../context/CourseContext';
 import { CourseModule, Difficulty, EnrollmentStatus } from '../../types';
-import { generateCourseContent } from '../../services/geminiService';
+import { generateCourseContent, apiGenerateVideo } from '../../services/geminiService';
 import Spinner from '../../components/Spinner';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -22,12 +22,29 @@ const TeacherDashboard: React.FC = () => {
   const [modules, setModules] = useState<{ id: string; title: string; content: string }[]>([]);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [videoPrompt, setVideoPrompt] = useState('');
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
+  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
+  const [videoGenerationMessage, setVideoGenerationMessage] = useState('');
+
 
   // UI state
   const [isCreating, setIsCreating] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // State for Confirmation Modal
+  const [confirmationState, setConfirmationState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: async () => {},
+    isConfirming: false,
+    confirmText: 'Confirm',
+    confirmingText: 'Confirming...',
+    variant: 'danger' as 'danger' | 'default',
+  });
 
   if (!user) return null;
 
@@ -45,6 +62,30 @@ const TeacherDashboard: React.FC = () => {
     createCourse: 'Create New Course'
   };
 
+  const openConfirmation = (props: Omit<typeof confirmationState, 'isOpen' | 'isConfirming'>) => {
+    setConfirmationState({ ...confirmationState, isOpen: true, ...props });
+  };
+
+  const closeConfirmation = () => {
+    if (confirmationState.isConfirming) return;
+    setConfirmationState(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleConfirmAction = async () => {
+    setConfirmationState(prev => ({ ...prev, isConfirming: true }));
+    try {
+      await confirmationState.onConfirm();
+    } catch (e) {
+      console.error("Confirmation action failed", e);
+      alert('The action failed to complete.');
+    } finally {
+      setConfirmationState({ // Reset state and close
+          isOpen: false, isConfirming: false, title: '', message: '', onConfirm: async () => {}, 
+          confirmText: 'Confirm', confirmingText: 'Confirming...', variant: 'danger' 
+      });
+    }
+  };
+
   const handleGenerateContent = async () => {
     if (!title) {
       setError("Please enter a course title first.");
@@ -58,6 +99,7 @@ const TeacherDashboard: React.FC = () => {
       if (content.modules && content.modules.length > 0) {
         setModules(content.modules.map((m, i) => ({ ...m, id: `mod-${Date.now()}-${i}` })));
       }
+      setVideoPrompt(`Create a short, exciting introductory video for a course titled "${title}". The course is about: ${content.description}. Make it visually engaging and professional.`);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -78,6 +120,10 @@ const TeacherDashboard: React.FC = () => {
     setThumbnail(null);
     setThumbnailPreview(null);
     setError('');
+    setVideoPrompt('');
+    setGeneratedVideoUrl(null);
+    setIsVideoGenerating(false);
+    setVideoGenerationMessage('');
   };
   
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,6 +139,46 @@ const TeacherDashboard: React.FC = () => {
         setThumbnailPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGenerateVideo = async () => {
+    if (!videoPrompt) {
+      setError("Please enter a prompt for the video.");
+      return;
+    }
+    setError('');
+    setIsVideoGenerating(true);
+    setGeneratedVideoUrl(null);
+
+    const messages = [
+      "Contacting the video generation service...",
+      "Generating a script for your video...",
+      "Casting digital actors...",
+      "Rendering the first few scenes...",
+      "This can take a few minutes, please wait...",
+      "Adding special effects...",
+      "Finalizing the video render...",
+      "Almost there...",
+    ];
+    let messageIndex = 0;
+    setVideoGenerationMessage(messages[messageIndex]);
+    const intervalId = setInterval(() => {
+        messageIndex = (messageIndex + 1) % messages.length;
+        setVideoGenerationMessage(messages[messageIndex]);
+    }, 5000);
+
+    try {
+      const videoUrl = await apiGenerateVideo(videoPrompt);
+      setGeneratedVideoUrl(videoUrl);
+      setSuccessMessage('Video generated successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate video.');
+    } finally {
+      clearInterval(intervalId);
+      setIsVideoGenerating(false);
+      setVideoGenerationMessage('');
     }
   };
 
@@ -127,6 +213,7 @@ const TeacherDashboard: React.FC = () => {
           thumbnail: thumbnailUrl,
           modules: finalModules,
           difficulty,
+          introVideoUrl: generatedVideoUrl || undefined,
         });
         
         setSuccessMessage('Course created successfully!');
@@ -152,10 +239,6 @@ const TeacherDashboard: React.FC = () => {
     const newModules = [...modules];
     newModules[index] = { ...newModules[index], [field]: value };
     setModules(newModules);
-  };
-
-  const handleDeleteModule = (index: number) => {
-    setModules(modules.filter((_, i) => i !== index));
   };
   
   const moveModule = (fromIndex: number, toIndex: number) => {
@@ -305,35 +388,108 @@ const TeacherDashboard: React.FC = () => {
                 </div>
               </div>
 
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Introductory Video (Optional)</h3>
+                <div className="p-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg space-y-4">
+                  <div>
+                    <label htmlFor="video-prompt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Video Prompt</label>
+                    <textarea 
+                      id="video-prompt" 
+                      rows={3} 
+                      value={videoPrompt} 
+                      onChange={(e) => setVideoPrompt(e.target.value)} 
+                      className="mt-1 block w-full px-4 py-2 bg-white dark:bg-gray-700/80 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary" 
+                      placeholder="e.g., An energetic and visually appealing 30-second intro for a web development course."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateVideo}
+                    disabled={isVideoGenerating || !videoPrompt}
+                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                  >
+                    {isVideoGenerating ? <Spinner className="w-5 h-5 mr-2" /> : (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 001.553.832l3-2a1 1 0 000-1.664l-3-2z" />
+                      </svg>
+                    )}
+                    <span>{isVideoGenerating ? 'Generating Video...' : 'Generate Video with AI'}</span>
+                  </button>
+
+                  {isVideoGenerating && (
+                    <div className="text-center p-4 bg-gray-100 dark:bg-gray-700/50 rounded-lg">
+                      <p className="font-semibold text-dark dark:text-light">{videoGenerationMessage}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Video generation can take a few minutes. You can continue editing other fields.</p>
+                    </div>
+                  )}
+
+                  {generatedVideoUrl && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Video Preview:</h4>
+                      <video 
+                        key={generatedVideoUrl} 
+                        src={`${generatedVideoUrl}&key=${process.env.API_KEY}`} 
+                        controls
+                        poster={thumbnailPreview || undefined}
+                        className="w-full rounded-lg shadow-md bg-black"
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="pt-2">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Course Modules</h3>
                 <div className="space-y-4">
                   {modules.map((module, index) => (
                     <div
                       key={module.id}
-                      className="p-4 border dark:border-gray-600 rounded-lg bg-gray-50/70 dark:bg-gray-700/50 relative transition-shadow hover:shadow-md"
+                      className="p-4 border dark:border-gray-600 rounded-lg bg-gray-50/70 dark:bg-gray-700/50 transition-shadow hover:shadow-md"
                     >
-                        <div className="flex-grow space-y-3">
-                          <div>
-                            <label htmlFor={`module-title-${index}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400">Module {index + 1} Title</label>
-                            <input type="text" id={`module-title-${index}`} value={module.title} onChange={(e) => handleModuleChange(index, 'title', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm" placeholder="e.g., Introduction to..." required />
-                          </div>
-                          <div>
-                            <label htmlFor={`module-content-${index}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400">Module Content</label>
-                            <textarea id={`module-content-${index}`} rows={3} value={module.content} onChange={(e) => handleModuleChange(index, 'content', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm" placeholder="A brief summary of what this module covers." required />
-                          </div>
+                      <div className="flex-grow space-y-3">
+                        <div>
+                          <label htmlFor={`module-title-${index}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400">Module {index + 1} Title</label>
+                          <input type="text" id={`module-title-${index}`} value={module.title} onChange={(e) => handleModuleChange(index, 'title', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm" placeholder="e.g., Introduction to..." required />
                         </div>
-                        <div className="absolute top-2.5 right-2.5 flex items-center space-x-1">
-                           <button type="button" onClick={() => moveModule(index, index - 1)} disabled={index === 0} className="p-1 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600" aria-label={`Move module ${index+1} up`}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
-                           </button>
-                           <button type="button" onClick={() => moveModule(index, index + 1)} disabled={index === modules.length - 1} className="p-1 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600" aria-label={`Move module ${index+1} down`}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                           </button>
-                           <button type="button" onClick={() => handleDeleteModule(index)} className="p-1 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors" aria-label={`Delete module ${index+1}`}>
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                           </button>
+                        <div>
+                          <label htmlFor={`module-content-${index}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400">Module Content</label>
+                          <textarea id={`module-content-${index}`} rows={3} value={module.content} onChange={(e) => handleModuleChange(index, 'content', e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary sm:text-sm" placeholder="A brief summary of what this module covers." required />
                         </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600/50 flex items-center justify-between">
+                        <div className="flex items-center space-x-1">
+                          <button type="button" onClick={() => moveModule(index, index - 1)} disabled={index === 0} className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600" aria-label={`Move module ${index+1} up`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 18a.75.75 0 01-.75-.75V4.66L4.28 9.22a.75.75 0 11-1.06-1.06l6.25-6.25a.75.75 0 011.06 0l6.25 6.25a.75.75 0 11-1.06 1.06L10.75 4.66v12.59A.75.75 0 0110 18z" clipRule="evenodd" /></svg>
+                          </button>
+                          <button type="button" onClick={() => moveModule(index, index + 1)} disabled={index === modules.length - 1} className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600" aria-label={`Move module ${index+1} down`}>
+                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v12.59l5.22-5.22a.75.75 0 111.06 1.06l-6.25 6.25a.75.75 0 01-1.06 0l-6.25-6.25a.75.75 0 111.06-1.06L9.25 15.34V2.75A.75.75 0 0110 2z" clipRule="evenodd" /></svg>
+                          </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const moduleTitle = modules[index].title || `Module ${index + 1}`;
+                                openConfirmation({
+                                    title: 'Remove Module',
+                                    message: `Are you sure you want to remove the module "${moduleTitle}"? This action cannot be undone.`,
+                                    confirmText: 'Remove',
+                                    confirmingText: 'Removing...',
+                                    onConfirm: async () => {
+                                        setModules(prevModules => prevModules.filter((_, i) => i !== index));
+                                    },
+                                    variant: 'danger',
+                                });
+                            }}
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-primary/90 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            Remove
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -351,6 +507,18 @@ const TeacherDashboard: React.FC = () => {
           </form>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmationState.isOpen}
+        onClose={closeConfirmation}
+        onConfirm={handleConfirmAction}
+        title={confirmationState.title}
+        message={confirmationState.message}
+        isConfirming={confirmationState.isConfirming}
+        confirmText={confirmationState.confirmText}
+        confirmingText={confirmationState.confirmingText}
+        variant={confirmationState.variant}
+      />
     </div>
   );
 };

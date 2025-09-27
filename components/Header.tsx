@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Logo from './icons/Logo';
 import ThemeToggle from './ThemeToggle';
@@ -13,11 +13,25 @@ const Header: React.FC = () => {
   const [mobilePfpError, setMobilePfpError] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setPfpError(false);
     setMobilePfpError(false);
   }, [user?.profilePicture]);
+  
+  useEffect(() => {
+    if (isMenuOpen) {
+      // Focus first item in mobile menu
+      const firstFocusable = mobileMenuRef.current?.querySelector('a, button');
+      (firstFocusable as HTMLElement)?.focus();
+    } else {
+      // Return focus to menu button, but only if it was the last focused element (to avoid hijacking focus)
+      menuButtonRef.current?.focus();
+    }
+  }, [isMenuOpen]);
+
 
   const userInitials = user?.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
@@ -101,6 +115,7 @@ const Header: React.FC = () => {
               </div>
               <div className="md:hidden">
                 <button 
+                  ref={menuButtonRef}
                   onClick={() => setIsMenuOpen(!isMenuOpen)} 
                   className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none"
                   aria-expanded={isMenuOpen}
@@ -114,7 +129,7 @@ const Header: React.FC = () => {
           </div>
           
           {isMenuOpen && (
-            <div id="mobile-menu" className="md:hidden pb-4 px-2 space-y-3">
+            <div ref={mobileMenuRef} id="mobile-menu" className="md:hidden pb-4 px-2 space-y-3">
               <a href="#/" className="block py-2 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold" onClick={() => setIsMenuOpen(false)}>Home</a>
               <a href="#/courses" className="block py-2 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold" onClick={() => setIsMenuOpen(false)}>Courses</a>
               {user && <a href="#/dashboard" className="block py-2 px-3 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 font-semibold" onClick={() => setIsMenuOpen(false)}>Dashboard</a>}

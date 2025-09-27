@@ -42,6 +42,7 @@ export interface Course {
   teacherId: string;
   modules: CourseModule[];
   difficulty: Difficulty;
+  introVideoUrl?: string;
 }
 
 export enum EnrollmentStatus {

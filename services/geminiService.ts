@@ -1,6 +1,3 @@
-
-
-
 // Fix: Combined imports to adhere to @google/genai guidelines.
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { MOCK_USERS, MOCK_COURSES, MOCK_ENROLLMENTS, MOCK_REVIEWS } from '../context/mockData';
@@ -55,6 +52,35 @@ export const generateCourseContent = async (title: string): Promise<{ descriptio
   } catch (error) {
     console.error("Error generating course content with Gemini API:", error);
     throw new Error("Failed to generate course content. Please check your API key and try again.");
+  }
+};
+
+export const apiGenerateVideo = async (prompt: string): Promise<string> => {
+  try {
+    let operation = await ai.models.generateVideos({
+      model: 'veo-2.0-generate-001',
+      prompt: prompt,
+      config: {
+        numberOfVideos: 1
+      }
+    });
+
+    while (!operation.done) {
+      // Wait for 10 seconds before checking the status again
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      operation = await ai.operations.getVideosOperation({ operation: operation });
+    }
+
+    const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+
+    if (downloadLink) {
+      return downloadLink;
+    } else {
+      throw new Error("Video generation completed, but no download link was found.");
+    }
+  } catch (error) {
+    console.error("Error generating video with Gemini API:", error);
+    throw new Error("Failed to generate video. Please try again later.");
   }
 };
 

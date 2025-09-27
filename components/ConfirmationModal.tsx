@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Spinner from './Spinner';
 
 interface ConfirmationModalProps {
@@ -25,17 +25,55 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmingText = 'Confirming...',
   variant = 'danger',
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !isConfirming) onClose();
+      if (event.key === 'Tab') {
+        const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusableElements || focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey) { // Shift + Tab
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            event.preventDefault();
+          }
+        } else { // Tab
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            event.preventDefault();
+          }
+        }
+      }
     };
+
     if (isOpen) {
+      triggerRef.current = document.activeElement as HTMLElement;
       document.addEventListener('keydown', handleKeyDown);
+      // Set focus to the first focusable element in the modal, typically the cancel button
+      setTimeout(() => {
+          const firstFocusable = modalRef.current?.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') as HTMLElement;
+          firstFocusable?.focus();
+      }, 100);
+    } else if (triggerRef.current) {
+        triggerRef.current.focus();
     }
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      if (!isOpen && triggerRef.current) {
+        triggerRef.current.focus();
+      }
     };
   }, [isOpen, onClose, isConfirming]);
+
 
   if (!isOpen) return null;
 
@@ -57,6 +95,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       onClick={() => !isConfirming && onClose()}
     >
       <div
+        ref={modalRef}
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md"
         style={{ animation: 'scaleIn 0.2s ease-out forwards' }}
         role="document"

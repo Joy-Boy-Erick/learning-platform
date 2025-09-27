@@ -23,10 +23,11 @@ const getDifficultyClass = (difficulty: Difficulty) => {
 }
 
 const StarRating = ({ rating }: { rating: number }) => (
-  <div className="flex items-center">
+  <div className="flex items-center" role="img" aria-label={`${rating.toFixed(1)} out of 5 stars`}>
     {[...Array(5)].map((_, i) => (
       <svg
         key={i}
+        aria-hidden="true"
         className={`w-4 h-4 ${i < Math.round(rating) ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'}`}
         fill="currentColor"
         viewBox="0 0 20 20"
