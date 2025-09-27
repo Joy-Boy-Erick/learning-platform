@@ -4,12 +4,24 @@ import { MOCK_USERS, MOCK_COURSES, MOCK_ENROLLMENTS, MOCK_REVIEWS } from '../con
 import { User, Course, Enrollment, Role, UserStatus, EnrollmentStatus, Review, ReviewStatus } from '../types';
 
 
-// Fix: Removed 'as string' type assertion to align with @google/genai guidelines.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let ai: GoogleGenAI | null = null;
+
+// Lazily initialize the AI client to prevent crashes on load if the API key is missing.
+const getAiClient = (): GoogleGenAI => {
+    if (ai) return ai;
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+        // This specific error message will be caught by the UI components.
+        throw new Error("The AI service is not available due to a configuration issue. Please contact an administrator.");
+    }
+    ai = new GoogleGenAI({ apiKey });
+    return ai;
+};
 
 export const generateCourseContent = async (title: string): Promise<{ description: string; modules: { title: string; content: string }[] }> => {
   try {
-    const response: GenerateContentResponse = await ai.models.generateContent({
+    const aiInstance = getAiClient();
+    const response: GenerateContentResponse = await aiInstance.models.generateContent({
       model: "gemini-2.5-flash",
       contents: `You are an expert instructional designer. For an online learning platform, generate a compelling course description and a list of 3 to 5 module titles with brief, engaging content for a course titled "${title}". The description should be exciting and highlight what students will learn.`,
       config: {
@@ -51,13 +63,17 @@ export const generateCourseContent = async (title: string): Promise<{ descriptio
 
   } catch (error) {
     console.error("Error generating course content with Gemini API:", error);
+    if (error instanceof Error) { // Propagate the specific error message
+        throw error;
+    }
     throw new Error("Failed to generate course content. Please check your API key and try again.");
   }
 };
 
 export const apiGenerateVideo = async (prompt: string): Promise<string> => {
   try {
-    let operation = await ai.models.generateVideos({
+    const aiInstance = getAiClient();
+    let operation = await aiInstance.models.generateVideos({
       model: 'veo-2.0-generate-001',
       prompt: prompt,
       config: {
@@ -68,7 +84,7 @@ export const apiGenerateVideo = async (prompt: string): Promise<string> => {
     while (!operation.done) {
       // Wait for 10 seconds before checking the status again
       await new Promise(resolve => setTimeout(resolve, 10000));
-      operation = await ai.operations.getVideosOperation({ operation: operation });
+      operation = await aiInstance.operations.getVideosOperation({ operation: operation });
     }
 
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
@@ -80,6 +96,9 @@ export const apiGenerateVideo = async (prompt: string): Promise<string> => {
     }
   } catch (error) {
     console.error("Error generating video with Gemini API:", error);
+     if (error instanceof Error) { // Propagate the specific error message
+        throw error;
+    }
     throw new Error("Failed to generate video. Please try again later.");
   }
 };

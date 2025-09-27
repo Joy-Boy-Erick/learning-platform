@@ -426,15 +426,24 @@ const TeacherDashboard: React.FC = () => {
                   {generatedVideoUrl && (
                     <div className="mt-4">
                       <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Video Preview:</h4>
-                      <video 
-                        key={generatedVideoUrl} 
-                        src={`${generatedVideoUrl}&key=${process.env.API_KEY}`} 
-                        controls
-                        poster={thumbnailPreview || undefined}
-                        className="w-full rounded-lg shadow-md bg-black"
-                      >
-                        Your browser does not support the video tag.
-                      </video>
+                      {process.env.API_KEY ? (
+                        <video 
+                          key={generatedVideoUrl} 
+                          src={`${generatedVideoUrl}&key=${process.env.API_KEY}`} 
+                          controls
+                          poster={thumbnailPreview || undefined}
+                          className="w-full rounded-lg shadow-md bg-black"
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                      ) : (
+                         <div className="w-full aspect-video bg-gray-900 flex flex-col items-center justify-center text-center text-white p-4 rounded-lg relative" role="img" aria-label="Video unavailable">
+                            {thumbnailPreview && <img src={thumbnailPreview} alt="Video poster" className="w-full h-full object-cover absolute inset-0 opacity-20" />}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                            <p className="font-semibold">Video Unavailable</p>
+                            <p className="text-xs text-gray-400">The video service is not configured.</p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

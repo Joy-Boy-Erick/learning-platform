@@ -1,7 +1,14 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI, LiveSession, LiveServerMessage, Modality, Blob } from '@google/genai';
+// Fix: The `LiveSession` type is not exported by the `@google/genai` library. It has been removed from this import.
+import { GoogleGenAI, LiveServerMessage, Modality, Blob } from '@google/genai';
 import Spinner from './Spinner';
+
+// Fix: A local `LiveSession` interface is defined based on its usage within this component
+// to maintain type safety for the session object, as the official type is not exported.
+interface LiveSession {
+  close(): void;
+  sendRealtimeInput(input: { media: Blob }): void;
+}
 
 // --- Audio Encoding/Decoding Helpers ---
 function encode(bytes: Uint8Array) {
@@ -105,12 +112,17 @@ const LiveChatWidget: React.FC = () => {
         setTranscripts([]);
         currentInputRef.current = '';
         currentOutputRef.current = '';
+        
+        if (!process.env.API_KEY) {
+            console.error("Gemini API key is not configured.");
+            setStatus('error');
+            return;
+        }
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStreamRef.current = stream;
 
-            // Fix: Removed 'as string' type assertion to align with @google/genai guidelines.
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
             const newSessionPromise = ai.live.connect({
@@ -242,7 +254,7 @@ const LiveChatWidget: React.FC = () => {
             case 'connecting': return 'Connecting...';
             case 'listening': return 'Listening... ask me anything!';
             case 'speaking': return 'AI Tutor is speaking...';
-            case 'error': return 'Connection error. Please reopen.';
+            case 'error': return 'AI Tutor unavailable. Please check configuration.';
             default: return 'Click to start the AI Tutor';
         }
     };
@@ -277,10 +289,16 @@ const LiveChatWidget: React.FC = () => {
                     </header>
                     <main className="flex-1 p-4 overflow-y-auto bg-gray-50 dark:bg-gray-800/50">
                         <div className="space-y-4">
-                            {transcripts.length === 0 && status !== 'connecting' && (
+                            {transcripts.length === 0 && status !== 'connecting' && status !== 'error' && (
                                 <div className="text-center text-gray-500 dark:text-gray-400 p-4">
                                     <p className="font-semibold">Welcome!</p>
                                     <p className="text-sm">Speak into your microphone to start a conversation with your AI Tutor.</p>
+                                </div>
+                            )}
+                             {status === 'error' && (
+                                <div className="text-center text-red-500 dark:text-red-400 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                                    <p className="font-semibold">Connection Error</p>
+                                    <p className="text-sm">The AI Tutor is currently unavailable due to a configuration issue. Please try again later.</p>
                                 </div>
                             )}
                             {transcripts.map(t => (
@@ -295,7 +313,7 @@ const LiveChatWidget: React.FC = () => {
                     </main>
                     <footer role="status" aria-live="polite" className="p-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
                        {status === 'connecting' ? <Spinner className="w-5 h-5 text-primary" /> : (
-                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${status === 'listening' ? 'text-primary animate-pulse' : ''} ${status === 'speaking' ? 'text-secondary' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-14 0m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${status === 'listening' ? 'text-primary animate-pulse' : ''} ${status === 'speaking' ? 'text-secondary' : ''} ${status === 'error' ? 'text-red-500' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-14 0m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                        )}
                        <p className="font-medium">{getStatusText()}</p>
                     </footer>

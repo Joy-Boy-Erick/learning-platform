@@ -57,6 +57,8 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
   const userEnrollment = user ? enrollments.find(e => e.studentId === user.id && e.courseId === course.id) : undefined;
   const isEnrolledAndApproved = userEnrollment?.status === EnrollmentStatus.Approved;
   const userHasReviewed = user ? reviews.some(r => r.studentId === user.id && r.courseId === courseId) : false;
+  // Check for API Key to conditionally render video player
+  const apiKey = process.env.API_KEY;
 
 
   const handleEnroll = async () => {
@@ -246,16 +248,23 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
         <div className="lg:col-span-1">
           <div className="sticky top-28">
              <div className="rounded-xl shadow-xl overflow-hidden mb-6 border dark:border-gray-700 bg-black">
-                {course.introVideoUrl ? (
+                {course.introVideoUrl && apiKey ? (
                     <video 
                         key={course.id} 
-                        src={`${course.introVideoUrl}&key=${process.env.API_KEY}`} 
+                        src={`${course.introVideoUrl}&key=${apiKey}`} 
                         controls 
                         poster={course.thumbnail}
                         className="w-full h-auto object-cover aspect-video"
                     >
                         Your browser does not support the video tag. An introductory video is available for this course.
                     </video>
+                ) : course.introVideoUrl && !apiKey ? (
+                    <div className="w-full aspect-video bg-gray-900 flex flex-col items-center justify-center text-center text-white p-4 relative" role="img" aria-label="Video unavailable">
+                        <img src={course.thumbnail} alt={course.title} className="w-full h-full object-cover absolute inset-0 opacity-20" />
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        <p className="font-semibold">Video Unavailable</p>
+                        <p className="text-xs text-gray-400">The video service is not configured.</p>
+                    </div>
                 ) : (
                     <img src={course.thumbnail} alt={course.title} className="w-full h-auto object-cover" />
                 )}
