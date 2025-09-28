@@ -10,33 +10,18 @@ This project includes a React frontend and a Node.js/Express backend server that
 
 -   Node.js and npm installed.
 
-### 1. Backend Setup
+### 1. Installation
 
-First, set up and start the backend server.
+Install all dependencies for both the frontend and backend by running the following command in the project's root directory:
+```bash
+npm install
+```
 
-1.  **Install Backend Dependencies:**
-    In the project's root directory, run:
-    ```bash
-    npm install express cors body-parser
-    ```
+### 2. Backend Proxy Configuration
 
-2.  **Start the Backend Server:**
-    Run the following command in a terminal. Keep this terminal window open.
-    ```bash
-    node server.js
-    ```
-    The server will start, listening on `http://localhost:3001`.
+The frontend development server (`vite`) is configured in `vite.config.js` to forward API requests to the backend server. This is a crucial step to prevent browser security errors (CORS) during development.
 
-### 2. Frontend Setup
-
-The frontend application requires a development server to handle API requests.
-
-#### Backend Proxy Configuration
-
-The frontend is configured to make API requests to `/api/...` (a relative path). For this to work in local development, you need to **proxy** these requests from the frontend dev server to your backend server running on `http://localhost:3001`.
-
-If you are using a development server like **Vite**, you can add the following to your `vite.config.js` or `vite.config.ts` file:
-
+The `vite.config.js` file is included in the project and contains the following configuration:
 ```javascript
 // vite.config.js
 import { defineConfig } from 'vite';
@@ -54,12 +39,35 @@ export default defineConfig({
   },
 });
 ```
+> **Note:** If you encounter connection issues, please ensure this configuration is correct and that you have restarted your frontend development server after any changes.
 
-> **Note:** If you are not using Vite, please consult the documentation for your specific development server on how to set up a proxy.
+### 3. Running Concurrently
 
-### 3. Run the Frontend
+You need to run two processes in separate terminals from the project root.
 
-Once the proxy is configured, run the frontend application in a **new terminal window**. When you navigate to your frontend's development URL (e.g., `http://localhost:5173`), all API calls will be correctly forwarded to your backend.
+1.  **Start the Backend Server:**
+    ```bash
+    npm run server
+    ```
+    The server will start and listen on `http://localhost:3001`.
+
+2.  **Start the Frontend Development Server:**
+    ```bash
+    npm run dev
+    ```
+    This will start the frontend, typically on a URL like `http://localhost:5173`. Open this URL in your browser to use the application.
+
+---
+
+## Building for Production
+
+To create a production-ready build of the frontend, run the following command:
+
+```bash
+npm run build
+```
+
+This will create a `dist` directory containing the optimized, static assets of your application. You can deploy the contents of this `dist` folder to any static hosting service.
 
 ---
 

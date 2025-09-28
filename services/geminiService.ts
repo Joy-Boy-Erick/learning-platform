@@ -9,14 +9,20 @@ const API_BASE_URL = '/api';
 // --- Helper Functions for API calls ---
 const handleResponse = async (response: Response) => {
     if (!response.ok) {
+        // Specifically handle 404s, which are common with proxy issues in dev environments.
+        if (response.status === 404) {
+            throw new Error(
+                "API endpoint not found (404). This is a proxy configuration issue. Please STOP and RESTART the frontend development server ('npm run dev') to apply the proxy settings from 'vite.config.js'."
+            );
+        }
+
         let errorMessage = `HTTP error! status: ${response.status}`;
         try {
             // Attempt to parse a JSON error body from our backend
             const errorData = await response.json();
             errorMessage = errorData.message || errorMessage;
         } catch (e) {
-            // If the body is not JSON, use the status text.
-            // This is common for proxy/dev server errors returning HTML pages.
+            // If parsing fails, fall back to status text
             errorMessage = response.statusText || errorMessage;
         }
         throw new Error(errorMessage);

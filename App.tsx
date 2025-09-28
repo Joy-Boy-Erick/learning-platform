@@ -18,21 +18,21 @@ const ConnectionErrorScreen = ({ error }: { error: string }) => (
             </svg>
             <h1 className="mt-4 text-2xl font-extrabold text-red-500">Connection Error</h1>
             <p className="mt-2 text-lg text-dark dark:text-light max-w-lg mx-auto">
-                The application failed to fetch initial data from the backend.
+                The application could not connect to the backend server.
             </p>
              <div className="mt-4 w-full text-left bg-red-100/50 dark:bg-red-900/20 p-3 rounded-md">
                 <p className="text-sm font-semibold text-red-700 dark:text-red-300">Error Details:</p>
                 <code className="mt-1 block text-xs text-red-600 dark:text-red-400 font-mono break-words">{error}</code>
             </div>
             <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-                This usually happens if:
+                This error occurs during local development if:
             </p>
             <ol className="mt-2 text-left text-sm text-gray-500 dark:text-gray-400 list-decimal list-inside space-y-2 p-4 bg-gray-100 dark:bg-gray-700/80 rounded-md">
-                <li>The backend server isn't running. (Start it with <code className="font-mono bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded">node server.js</code>)</li>
-                <li>The frontend development server proxy is not configured correctly.</li>
+                <li>The backend server isn't running. Start it with the command: <code className="font-mono bg-gray-200 dark:bg-gray-600 px-1 py-0.5 rounded">npm run server</code></li>
+                <li>The frontend development server proxy is missing or misconfigured.</li>
             </ol>
             <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                Please ensure the server is running and check the <strong>proxy configuration</strong> instructions in the project's <code>README.md</code> file.
+                Please ensure the server is running and check the <strong>Backend Proxy Configuration</strong> instructions in the project's <code>README.md</code> file.
             </p>
             <button
                 onClick={() => window.location.reload()}
