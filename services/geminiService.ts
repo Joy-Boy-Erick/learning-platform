@@ -1,7 +1,5 @@
-
 // Fix: Combined imports to adhere to @google/genai guidelines.
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { MOCK_USERS, MOCK_COURSES, MOCK_ENROLLMENTS, MOCK_REVIEWS } from '../context/mockData';
 import { User, Course, Enrollment, Role, UserStatus, EnrollmentStatus, Review, ReviewStatus } from '../types';
 
 
@@ -76,287 +74,136 @@ export const generateCourseContent = async (title: string): Promise<{ descriptio
   }
 };
 
-// --- API Simulation Layer ---
+// --- Backend API Service ---
 
-const DB_KEYS = {
-  USERS: 'db_users',
-  COURSES: 'db_courses',
-  ENROLLMENTS: 'db_enrollments',
-  REVIEWS: 'db_reviews',
-  SESSION: 'db_session_user'
-};
+const API_BASE_URL = '/api'; // Use relative path for proxy
 
-const SIMULATED_DELAY = 500; // ms
-
-// --- Database Initialization ---
-const initDatabase = () => {
-  const initKeyIfNeeded = (key: string, mockData: any) => {
-    const existingData = localStorage.getItem(key);
-    // If no data exists, or if it's the erroneous "undefined" string, initialize it.
-    if (!existingData || existingData === 'undefined') {
-        localStorage.setItem(key, JSON.stringify(mockData));
+const handleResponse = async (response: Response) => {
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("API endpoint not found (404). This is likely a proxy configuration issue. Please restart the Vite development server to apply proxy settings and ensure it is set up correctly as described in the README.md file.");
     }
-  };
-
-  initKeyIfNeeded(DB_KEYS.USERS, MOCK_USERS);
-  initKeyIfNeeded(DB_KEYS.COURSES, MOCK_COURSES);
-  initKeyIfNeeded(DB_KEYS.ENROLLMENTS, MOCK_ENROLLMENTS);
-  initKeyIfNeeded(DB_KEYS.REVIEWS, MOCK_REVIEWS);
+    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+    throw new Error(errorData.message || 'An unknown server error occurred.');
+  }
+  // Handle cases with no content
+  if (response.status === 204) {
+      return null;
+  }
+  return response.json();
 };
 
-
-initDatabase();
-
-// --- Helper Functions ---
-const simulateRequest = <T>(data: T, error?: string): Promise<T> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (error) {
-        reject(new Error(error));
-      } else {
-        // The `JSON.stringify(undefined)` returns `undefined`, which causes `JSON.parse` to fail.
-        // This handles that specific case for API calls that resolve with no data (e.g., logout).
-        if (data === undefined) {
-          resolve(data);
-          return;
-        }
-        // Deep copy to simulate immutable data from an API
-        resolve(JSON.parse(JSON.stringify(data))); 
-      }
-    }, SIMULATED_DELAY);
-  });
-};
-
-const getFromDb = <T>(key: string): T[] => {
+const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   try {
-    const item = localStorage.getItem(key);
-    // Guard against null, or the literal string "undefined" which causes JSON.parse to fail.
-    if (item === null || item === 'undefined') {
-      return [];
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+    return handleResponse(response);
+  } catch (error) {
+     if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('Could not connect to the server. Please ensure the backend server is running and accessible.');
     }
-    return JSON.parse(item);
-  } catch (e) {
-    console.error(`Failed to parse localStorage item with key "${key}". Returning empty array.`, e);
-    return [];
+    throw error;
   }
 };
-
-const saveToDb = <T>(key: string, data: T[]): void => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
 
 // --- Auth API ---
 
 export const apiLogin = (email: string, password: string): Promise<User> => {
-  const users = getFromDb<User>(DB_KEYS.USERS);
-  const foundUser = users.find(u => u.email === email && u.password === password);
-  
-  if (foundUser && foundUser.status === UserStatus.Active) {
-    localStorage.setItem(DB_KEYS.SESSION, JSON.stringify(foundUser));
-    return simulateRequest(foundUser);
-  }
-  return simulateRequest(null as any, "Invalid credentials or account disabled.");
-};
-
-export const apiLogout = (): Promise<void> => {
-    localStorage.removeItem(DB_KEYS.SESSION);
-    return simulateRequest(undefined);
-};
-
-export const apiGetSession = (): Promise<User | null> => {
-    const userJson = localStorage.getItem(DB_KEYS.SESSION);
-    if (!userJson || userJson === 'undefined') {
-        return simulateRequest(null);
-    }
-    try {
-        const user = JSON.parse(userJson);
-        return simulateRequest(user);
-    } catch (e) {
-        console.error(`Failed to parse session from localStorage:`, e);
-        // If session data is corrupted, clear it and treat as logged out.
-        localStorage.removeItem(DB_KEYS.SESSION);
-        return simulateRequest(null);
-    }
+  return apiRequest('/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
 };
 
 export const apiRegister = (name: string, email: string, role: Role, password: string): Promise<User> => {
-  let users = getFromDb<User>(DB_KEYS.USERS);
-  if (users.some(u => u.email === email)) {
-    return simulateRequest(null as any, "An account with this email already exists.");
-  }
-  const newUser: User = {
-    id: `user-${Date.now()}`,
-    name,
-    email,
-    password,
-    role,
-    status: UserStatus.Active,
-    profilePicture: `https://picsum.photos/seed/${Date.now()}/200`,
-    bio: ''
-  };
-  users.push(newUser);
-  saveToDb(DB_KEYS.USERS, users);
-  // Don't return password to client
-  const { password: _password, ...userToReturn } = newUser;
-  return simulateRequest(userToReturn as User);
+  return apiRequest('/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, role, password }),
+  });
 };
 
 // --- User API ---
 export const apiFetchUsers = (): Promise<User[]> => {
-    const users = getFromDb<User>(DB_KEYS.USERS);
-    // Sanitize passwords before returning
-    const sanitizedUsers = users.map(u => {
-      const { password, ...rest } = u;
-      return rest;
-    });
-    return simulateRequest(sanitizedUsers as User[]);
+    return apiRequest('/users');
 };
 
 export const apiUpdateUser = (updatedUser: User): Promise<User> => {
-    let users = getFromDb<User>(DB_KEYS.USERS);
-    const index = users.findIndex(u => u.id === updatedUser.id);
-    if (index > -1) {
-        // Preserve password if it exists and other sensitive fields
-        const existingPassword = users[index].password;
-        const existingProfilePicture = users[index].profilePicture;
-
-        users[index] = { 
-            ...users[index], // Preserve all existing fields
-            ...updatedUser, // Overwrite with updated fields
-            password: existingPassword, // Ensure password is not changed here
-            profilePicture: updatedUser.profilePicture || existingProfilePicture // Preserve picture if not updated
-        };
-        saveToDb(DB_KEYS.USERS, users);
-
-        const { password, ...userToReturn } = users[index];
-
-        // Update session if the current user is being updated
-        const sessionUserJson = localStorage.getItem(DB_KEYS.SESSION);
-        if(sessionUserJson && sessionUserJson !== 'undefined'){
-            try {
-                const sessionUser = JSON.parse(sessionUserJson);
-                if(sessionUser.id === updatedUser.id){
-                    localStorage.setItem(DB_KEYS.SESSION, JSON.stringify(userToReturn));
-                }
-            } catch (e) {
-                console.error(`Failed to parse session during user update:`, e);
-            }
-        }
-        return simulateRequest(userToReturn as User);
-    }
-    return simulateRequest(null as any, "User not found.");
+    return apiRequest(`/users/${updatedUser.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedUser),
+    });
 };
 
-export const apiDeleteUser = (userId: string): Promise<string> => {
-    let users = getFromDb<User>(DB_KEYS.USERS);
-    const newUsers = users.filter(u => u.id !== userId);
-    if (users.length === newUsers.length) {
-        return simulateRequest('', "User not found.");
-    }
-    saveToDb(DB_KEYS.USERS, newUsers);
-    return simulateRequest(userId);
+export const apiDeleteUser = (userId: string): Promise<{ id: string }> => {
+    return apiRequest(`/users/${userId}`, {
+        method: 'DELETE',
+    });
 };
-
 
 // --- Course API ---
 export const apiFetchCourses = (): Promise<Course[]> => {
-    const courses = getFromDb<Course>(DB_KEYS.COURSES);
-    return simulateRequest(courses);
+    return apiRequest('/courses');
 };
 
 export const apiAddCourse = (courseData: Omit<Course, 'id'>): Promise<Course> => {
-    let courses = getFromDb<Course>(DB_KEYS.COURSES);
-    const newCourse: Course = {
-      ...courseData,
-      id: `course-${Date.now()}`,
-    };
-    courses.push(newCourse);
-    saveToDb(DB_KEYS.COURSES, courses);
-    return simulateRequest(newCourse);
+    return apiRequest('/courses', {
+        method: 'POST',
+        body: JSON.stringify(courseData),
+    });
 };
 
 export const apiUpdateCourse = (updatedCourse: Course): Promise<Course> => {
-    let courses = getFromDb<Course>(DB_KEYS.COURSES);
-    const index = courses.findIndex(c => c.id === updatedCourse.id);
-    if (index > -1) {
-        courses[index] = updatedCourse;
-        saveToDb(DB_KEYS.COURSES, courses);
-        return simulateRequest(courses[index]);
-    }
-    return simulateRequest(null as any, "Course not found.");
+    return apiRequest(`/courses/${updatedCourse.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedCourse),
+    });
 };
 
 // --- Enrollment API ---
 export const apiFetchEnrollments = (): Promise<Enrollment[]> => {
-    const enrollments = getFromDb<Enrollment>(DB_KEYS.ENROLLMENTS);
-    return simulateRequest(enrollments);
+    return apiRequest('/enrollments');
 };
 
 export const apiEnrollInCourse = (courseId: string, studentId: string): Promise<Enrollment> => {
-    let enrollments = getFromDb<Enrollment>(DB_KEYS.ENROLLMENTS);
-    const existingEnrollment = enrollments.find(e => e.courseId === courseId && e.studentId === studentId);
-    if(existingEnrollment) {
-        return simulateRequest(null as any, "You have already requested to enroll in this course.");
-    }
-    const newEnrollment: Enrollment = {
-      id: `enroll-${Date.now()}`,
-      courseId,
-      studentId,
-      status: EnrollmentStatus.Pending,
-    };
-    enrollments.push(newEnrollment);
-    saveToDb(DB_KEYS.ENROLLMENTS, enrollments);
-    return simulateRequest(newEnrollment);
+    return apiRequest('/enrollments', {
+        method: 'POST',
+        body: JSON.stringify({ courseId, studentId }),
+    });
 };
 
 export const apiUpdateEnrollmentStatus = (enrollmentId: string, status: EnrollmentStatus): Promise<Enrollment> => {
-    let enrollments = getFromDb<Enrollment>(DB_KEYS.ENROLLMENTS);
-    const index = enrollments.findIndex(e => e.id === enrollmentId);
-    if(index > -1) {
-        enrollments[index].status = status;
-        saveToDb(DB_KEYS.ENROLLMENTS, enrollments);
-        return simulateRequest(enrollments[index]);
-    }
-    return simulateRequest(null as any, "Enrollment not found.");
+    return apiRequest(`/enrollments/${enrollmentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+    });
 };
 
 // --- Review API ---
 export const apiFetchReviews = (): Promise<Review[]> => {
-    const reviews = getFromDb<Review>(DB_KEYS.REVIEWS);
-    return simulateRequest(reviews);
+    return apiRequest('/reviews');
 };
 
 export const apiAddReview = (reviewData: Omit<Review, 'id' | 'status' | 'createdAt'>): Promise<Review> => {
-    let reviews = getFromDb<Review>(DB_KEYS.REVIEWS);
-    const newReview: Review = {
-        ...reviewData,
-        id: `review-${Date.now()}`,
-        status: ReviewStatus.Pending,
-        createdAt: new Date().toISOString()
-    };
-    reviews.push(newReview);
-    saveToDb(DB_KEYS.REVIEWS, reviews);
-    return simulateRequest(newReview);
+    return apiRequest('/reviews', {
+        method: 'POST',
+        body: JSON.stringify(reviewData),
+    });
 };
 
 export const apiUpdateReviewStatus = (reviewId: string, status: ReviewStatus): Promise<Review> => {
-    let reviews = getFromDb<Review>(DB_KEYS.REVIEWS);
-    const index = reviews.findIndex(r => r.id === reviewId);
-    if (index > -1) {
-        reviews[index].status = status;
-        saveToDb(DB_KEYS.REVIEWS, reviews);
-        return simulateRequest(reviews[index]);
-    }
-    return simulateRequest(null as any, "Review not found.");
+    return apiRequest(`/reviews/${reviewId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+    });
 };
 
-export const apiDeleteReview = (reviewId: string): Promise<string> => {
-    let reviews = getFromDb<Review>(DB_KEYS.REVIEWS);
-    const newReviews = reviews.filter(r => r.id !== reviewId);
-    if (reviews.length === newReviews.length) {
-        return simulateRequest('', "Review not found.");
-    }
-    saveToDb(DB_KEYS.REVIEWS, newReviews);
-    return simulateRequest(reviewId);
+export const apiDeleteReview = (reviewId: string): Promise<{ id: string }> => {
+    return apiRequest(`/reviews/${reviewId}`, {
+        method: 'DELETE',
+    });
 };
