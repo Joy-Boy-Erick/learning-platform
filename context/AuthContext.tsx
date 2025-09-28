@@ -15,7 +15,6 @@ interface AuthContextType {
   user: User | null;
   users: User[];
   isAuthLoading: boolean;
-  authError: string | null;
   login: (email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
   register: (name: string, email: string, role: Role, password: string) => Promise<User>;
@@ -27,26 +26,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SESSION_STORAGE_KEY = 'db_session_user';
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const sessionUser = await apiGetSession(); // Reads from localStorage
+        const sessionUser = await apiGetSession();
         if (sessionUser) {
           setUser(sessionUser);
         }
         const allUsers = await apiFetchUsers();
         setUsers(allUsers);
-      } catch (error: any) {
+      } catch (error) {
         console.error("Failed to load initial auth data", error);
-        setAuthError(error.message || "An unknown error occurred while loading user data.");
+        // On failure, still stop loading to not block the app
       } finally {
         setIsAuthLoading(false);
       }
@@ -56,7 +52,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string) => {
     const loggedInUser = await apiLogin(email, password);
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(loggedInUser));
     setUser(loggedInUser);
     return loggedInUser;
   };
@@ -66,9 +61,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await apiLogout();
     } catch (error) {
         console.error("API logout failed:", error);
+        // We still want to log out the user on the client side.
+        // Re-throw the error so the UI can be aware of the failure.
         throw error;
     } finally {
-        localStorage.removeItem(SESSION_STORAGE_KEY);
+        // This ensures the user is logged out on the client-side
+        // regardless of whether the API call succeeded or failed.
         setUser(null);
     }
   };
@@ -83,7 +81,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const returnedUser = await apiUpdateUser(updatedUser);
     setUsers(prevUsers => prevUsers.map(u => u.id === returnedUser.id ? returnedUser : u));
     if (user && user.id === returnedUser.id) {
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(returnedUser));
         setUser(returnedUser);
     }
   };
@@ -113,7 +110,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
   return (
-    <AuthContext.Provider value={{ user, users, isAuthLoading, authError, login, logout, register, updateUser, updateUserStatus, updateUserRole, deleteUser }}>
+    <AuthContext.Provider value={{ user, users, isAuthLoading, login, logout, register, updateUser, updateUserStatus, updateUserRole, deleteUser }}>
       {children}
     </AuthContext.Provider>
   );

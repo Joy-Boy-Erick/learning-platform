@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Course, Enrollment, EnrollmentStatus, User, Role, Review, ReviewStatus } from '../types';
 import { useAuth } from './AuthContext';
@@ -22,7 +21,6 @@ interface CourseContextType {
   teachers: User[];
   students: User[];
   isLoading: boolean;
-  courseError: string | null;
   addCourse: (course: Omit<Course, 'id'>) => Promise<Course>;
   updateCourse: (course: Course) => Promise<void>;
   enrollInCourse: (courseId: string, studentId: string) => Promise<Enrollment>;
@@ -40,7 +38,6 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [courseError, setCourseError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -54,9 +51,8 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setCourses(fetchedCourses);
         setEnrollments(fetchedEnrollments);
         setReviews(fetchedReviews);
-      } catch (error: any) {
+      } catch (error) {
         console.error("Failed to fetch course data", error);
-        setCourseError(error.message || "An unknown error occurred while loading course data.");
       } finally {
         setIsLoading(false);
       }
@@ -123,7 +119,6 @@ export const CourseProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       teachers, 
       students, 
       isLoading: combinedIsLoading, 
-      courseError,
       addCourse, 
       updateCourse,
       enrollInCourse, 

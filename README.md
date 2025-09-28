@@ -1,74 +1,20 @@
-# Yay Mon Digital Learning Platform
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-This is a digital learning management system built with React, featuring role-based dashboards for admins, teachers, and students. Teachers can leverage the Gemini API to auto-generate course content.
+# Run and deploy your AI Studio app
 
-## Running the Application
+This contains everything you need to run your app locally.
 
-This project includes a React frontend and a Node.js/Express backend server that must be run concurrently.
+View your app in AI Studio: https://ai.studio/apps/drive/1F6ple5IZ_FWnexkyKsBMAB-oNglxzLYo
 
-### Prerequisites
+## Run Locally
 
--   Node.js and npm installed.
+**Prerequisites:**  Node.js
 
-### 1. Installation
 
-Install all dependencies for both the frontend and backend by running the following command in the project's root directory:
-```bash
-npm install
-```
-
-### 2. Backend Proxy Configuration
-
-The frontend development server (`vite`) is configured in `vite.config.js` to forward API requests to the backend server. This is a crucial step to prevent browser security errors (CORS) during development.
-
-The `vite.config.js` file is included in the project and contains the following configuration:
-```javascript
-// vite.config.js
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-    },
-  },
-});
-```
-> **Note:** If you encounter connection issues, please ensure this configuration is correct and that you have restarted your frontend development server after any changes.
-
-### 3. Running Concurrently
-
-You need to run two processes in separate terminals from the project root.
-
-1.  **Start the Backend Server:**
-    ```bash
-    npm run server
-    ```
-    The server will start and listen on `http://localhost:3001`.
-
-2.  **Start the Frontend Development Server:**
-    ```bash
-    npm run dev
-    ```
-    This will start the frontend, typically on a URL like `http://localhost:5173`. Open this URL in your browser to use the application.
-
----
-
-## Building for Production
-
-To create a production-ready build of the frontend, run the following command:
-
-```bash
-npm run build
-```
-
-This will create a `dist` directory containing the optimized, static assets of your application. You can deploy the contents of this `dist` folder to any static hosting service.
-
----
-
-Enjoy using the Yay Mon Digital Learning Platform!
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
