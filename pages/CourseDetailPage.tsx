@@ -4,7 +4,6 @@ import { useCourseContext } from '../context/CourseContext';
 import { useAuth } from '../context/AuthContext';
 import { EnrollmentStatus, Role, ReviewStatus } from '../types';
 import Spinner from '../components/Spinner';
-import { isAiConfigured } from '../services/geminiService';
 
 interface CourseDetailPageProps {
   courseId: string;
@@ -232,25 +231,14 @@ const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
                           {module.videoUrl && (
                             <div className="mb-4">
                               <h4 className="font-semibold text-dark dark:text-light mb-2">Module Video</h4>
-                                {isAiConfigured() ? (
-                                    <video
-                                        key={module.id}
-                                        src={module.videoUrl}
-                                        controls
-                                        className="w-full rounded-lg shadow-md bg-black max-h-96"
-                                    >
-                                        Your browser does not support the video tag.
-                                    </video>
-                                ) : (
-                                    <div role="alert" className="w-full aspect-video rounded-lg bg-gray-100 dark:bg-gray-700/50 flex flex-col items-center justify-center p-4 text-center border border-dashed border-gray-300 dark:border-gray-600">
-                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.55a2 2 0 01.95 1.66V18a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h8.04a2 2 0 011.66.95L15 10zM15 10H5m10 0v8" />
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-4-4-4 4" />
-                                      </svg>
-                                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Video unavailable due to configuration issue.</p>
-                                      <p className="text-xs text-gray-500 dark:text-gray-400">Please contact an administrator.</p>
-                                    </div>
-                                )}
+                                <video
+                                    key={module.id}
+                                    src={module.videoUrl}
+                                    controls
+                                    className="w-full rounded-lg shadow-md bg-black max-h-96"
+                                >
+                                    Your browser does not support the video tag.
+                                </video>
                             </div>
                            )}
                          <p className="text-gray-700 dark:text-gray-300 mt-1 prose dark:prose-invert max-w-none">{module.content}</p>

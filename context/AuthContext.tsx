@@ -1,14 +1,15 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, Role, UserStatus } from '../types';
 import { 
     apiLogin, 
+    apiLogout, 
     apiRegister, 
     apiUpdateUser, 
     apiDeleteUser, 
     apiFetchUsers,
+    apiGetSession
 } from '../services/geminiService';
-
-const SESSION_KEY = 'db_session_user';
 
 interface AuthContextType {
   user: User | null;
@@ -33,18 +34,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        // Try to load session from localStorage first
-        const sessionUserJson = localStorage.getItem(SESSION_KEY);
-        if (sessionUserJson && sessionUserJson !== 'undefined') {
-            try {
-                setUser(JSON.parse(sessionUserJson));
-            } catch (e) {
-                console.error("Failed to parse session, clearing.", e);
-                localStorage.removeItem(SESSION_KEY);
-            }
+        const sessionUser = await apiGetSession();
+        if (sessionUser) {
+          setUser(sessionUser);
         }
-        
-        // Fetch all users for admin dashboard
         const allUsers = await apiFetchUsers();
         setUsers(allUsers);
       } catch (error) {
@@ -59,15 +52,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string) => {
     const loggedInUser = await apiLogin(email, password);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(loggedInUser));
     setUser(loggedInUser);
     return loggedInUser;
   };
 
-  const logout = async (): Promise<void> => {
-    localStorage.removeItem(SESSION_KEY);
-    setUser(null);
-    return Promise.resolve();
+  const logout = async () => {
+    try {
+        await apiLogout();
+    } catch (error) {
+        console.error("API logout failed:", error);
+        // We still want to log out the user on the client side.
+        // Re-throw the error so the UI can be aware of the failure.
+        throw error;
+    } finally {
+        // This ensures the user is logged out on the client-side
+        // regardless of whether the API call succeeded or failed.
+        setUser(null);
+    }
   };
   
   const register = async (name: string, email: string, role: Role, password: string) => {
@@ -80,9 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const returnedUser = await apiUpdateUser(updatedUser);
     setUsers(prevUsers => prevUsers.map(u => u.id === returnedUser.id ? returnedUser : u));
     if (user && user.id === returnedUser.id) {
-        // Update user in state and session storage
         setUser(returnedUser);
-        localStorage.setItem(SESSION_KEY, JSON.stringify(returnedUser));
     }
   };
 

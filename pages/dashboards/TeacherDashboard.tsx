@@ -361,7 +361,7 @@ const TeacherDashboard: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleGenerateContent}
-                      disabled={isGenerating || !title}
+                      disabled={isGenerating || !title || !isAiConfigured()}
                       className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
                     >
                       {isGenerating ? <Spinner className="w-5 h-5 mr-2" /> : (
@@ -369,7 +369,7 @@ const TeacherDashboard: React.FC = () => {
                             <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 110-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0V6h-1a1 1 0 010-2h1V3a1 1 0 011-1zM11 13a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" clipRule="evenodd" />
                         </svg>
                       )}
-                      <span>{isGenerating ? 'Generating...' : 'Generate with AI'}</span>
+                      <span>{isGenerating ? 'Generating...' : (isAiConfigured() ? 'Generate with AI' : 'AI Disabled')}</span>
                     </button>
                   )}
                 </div>
@@ -437,18 +437,7 @@ const TeacherDashboard: React.FC = () => {
                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400">Module Video (Optional)</label>
                            {module.videoUrl && (
                              <div className="my-2">
-                               {isAiConfigured() ? (
-                                   <video src={module.videoUrl} controls className="w-full max-h-48 rounded bg-black"></video>
-                               ) : (
-                                   <div role="alert" className="w-full max-h-48 rounded bg-gray-100 dark:bg-gray-700/50 flex flex-col items-center justify-center p-4 text-center border border-dashed border-gray-300 dark:border-gray-600">
-                                       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.55a2 2 0 01.95 1.66V18a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h8.04a2 2 0 011.66.95L15 10zM15 10H5m10 0v8" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-4-4-4 4" />
-                                       </svg>
-                                       <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Video unavailable due to configuration issue.</p>
-                                       <p className="text-xs text-gray-500 dark:text-gray-400">Please contact an administrator.</p>
-                                   </div>
-                               )}
+                               <video src={module.videoUrl} controls className="w-full max-h-48 rounded bg-black"></video>
                              </div>
                            )}
                            <label htmlFor={`module-video-${index}`} className="mt-1 cursor-pointer w-full inline-flex justify-center bg-white dark:bg-gray-700/80 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
