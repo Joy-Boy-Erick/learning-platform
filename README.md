@@ -1,43 +1,58 @@
 # Yay Mon Digital Learning Platform
 
-A digital learning management system built with React, featuring role-based dashboards for admins, teachers, and students. Teachers can leverage the Gemini API to auto-generate course content.
+A digital learning management system built with React, featuring role-based dashboards for admins, teachers, and students. This is a full-stack application with a React frontend and a Node.js/Express backend.
 
-This project is configured with [Vite](https://vitejs.dev/) for a streamlined development and build process.
+## Project Structure
 
-## Development
+-   `/`: Contains the React frontend source code.
+-   `/backend`: Contains the Node.js + Express backend server.
+-   `/frontend`: This directory will be **generated** when you build the frontend. It contains the optimized, static assets that the backend will serve.
 
-To run the application locally for development:
+## Setup & Running the Application
 
-1.  **Install dependencies:**
+Follow these steps to get the full-stack application running.
+
+### 1. Frontend Setup
+
+First, navigate to the root directory to install dependencies and build the static frontend files.
+
+```bash
+# Install frontend dependencies
+npm install
+
+# Build the optimized frontend into the /frontend directory
+npm run build
+```
+
+### 2. Backend Setup
+
+Next, set up and run the backend server.
+
+1.  **Navigate to the backend directory:**
+    ```bash
+    cd backend
+    ```
+
+2.  **Install backend dependencies:**
     ```bash
     npm install
     ```
 
-2.  **Start the development server:**
+3.  **Create an environment file:**
+    Copy the example environment file to create your own local configuration.
     ```bash
-    npm run dev
+    cp .env.example .env
     ```
+    Now, open the `.env` file and fill in your database credentials and your **Google Gemini API Key**.
 
-This will start the app, typically at `http://localhost:5173`.
+4.  **Start the server:**
+    -   For production:
+        ```bash
+        npm start
+        ```
+    -   For development (with auto-reloading via nodemon):
+        ```bash
+        npm run dev
+        ```
 
-## Building for Production
-
-To create a production-ready build:
-
-1.  **Run the build script:**
-    ```bash
-    npm run build
-    ```
-
-This command bundles the application into static files and outputs them to the `dist` directory. The API key for the Gemini API is expected to be available as an environment variable in your build environment.
-
-## Deployment
-
-After building the project, deploy the contents of the `dist` directory to any static hosting service.
-
-You can test the production build locally with a static server:
-
-```bash
-npm install -g serve
-serve -s dist
-```
+The server will start on the port specified in your `.env` file (default is `3001`). You can now access the application at `http://localhost:3001`.
