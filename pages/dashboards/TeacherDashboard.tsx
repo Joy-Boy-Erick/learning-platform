@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useCourseContext } from '../../context/CourseContext';
 import { Course, CourseModule, Difficulty, EnrollmentStatus } from '../../types';
-import { generateCourseContent, isAiConfigured } from '../../services/geminiService';
+import { generateCourseContent } from '../../services/geminiService';
 import Spinner from '../../components/Spinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
 
@@ -361,7 +361,7 @@ const TeacherDashboard: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleGenerateContent}
-                      disabled={isGenerating || !title || !isAiConfigured()}
+                      disabled={isGenerating || !title}
                       className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-secondary hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
                     >
                       {isGenerating ? <Spinner className="w-5 h-5 mr-2" /> : (
@@ -369,7 +369,7 @@ const TeacherDashboard: React.FC = () => {
                             <path fillRule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 110-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0V6h-1a1 1 0 010-2h1V3a1 1 0 011-1zM11 13a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" clipRule="evenodd" />
                         </svg>
                       )}
-                      <span>{isGenerating ? 'Generating...' : (isAiConfigured() ? 'Generate with AI' : 'AI Disabled')}</span>
+                      <span>{isGenerating ? 'Generating...' : 'Generate with AI'}</span>
                     </button>
                   )}
                 </div>

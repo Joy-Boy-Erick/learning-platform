@@ -1,20 +1,43 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Yay Mon Digital Learning Platform
 
-# Run and deploy your AI Studio app
+A digital learning management system built with React, featuring role-based dashboards for admins, teachers, and students. Teachers can leverage the Gemini API to auto-generate course content.
 
-This contains everything you need to run your app locally.
+This project is configured with [Vite](https://vitejs.dev/) for a streamlined development and build process.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1F6ple5IZ_FWnexkyKsBMAB-oNglxzLYo
+## Development
 
-## Run Locally
+To run the application locally for development:
 
-**Prerequisites:**  Node.js
+1.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
+2.  **Start the development server:**
+    ```bash
+    npm run dev
+    ```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+This will start the app, typically at `http://localhost:5173`.
+
+## Building for Production
+
+To create a production-ready build:
+
+1.  **Run the build script:**
+    ```bash
+    npm run build
+    ```
+
+This command bundles the application into static files and outputs them to the `dist` directory. The API key for the Gemini API is expected to be available as an environment variable in your build environment.
+
+## Deployment
+
+After building the project, deploy the contents of the `dist` directory to any static hosting service.
+
+You can test the production build locally with a static server:
+
+```bash
+npm install -g serve
+serve -s dist
+```
