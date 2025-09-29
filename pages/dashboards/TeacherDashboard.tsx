@@ -448,10 +448,10 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600/50 flex items-center justify-between">
                         <div className="flex items-center space-x-1">
-                          <button type="button" onClick={() => moveModule(index, index - 1)} disabled={index === 0} className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600" aria-label={`Move module ${index+1} up`}>
+                          <button type="button" onClick={() => moveModule(index, index - 1)} disabled={index === 0} className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600" aria-label={`Move module "${module.title || `Module ${index + 1}`}" up`}>
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 18a.75.75 0 01-.75-.75V4.66L4.28 9.22a.75.75 0 11-1.06-1.06l6.25-6.25a.75.75 0 011.06 0l6.25 6.25a.75.75 0 11-1.06 1.06L10.75 4.66v12.59A.75.75 0 0110 18z" clipRule="evenodd" /></svg>
                           </button>
-                          <button type="button" onClick={() => moveModule(index, index + 1)} disabled={index === modules.length - 1} className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600" aria-label={`Move module ${index+1} down`}>
+                          <button type="button" onClick={() => moveModule(index, index + 1)} disabled={index === modules.length - 1} className="p-1.5 rounded-full text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-200 dark:hover:bg-gray-600" aria-label={`Move module "${module.title || `Module ${index + 1}`}" down`}>
                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fillRule="evenodd" d="M10 2a.75.75 0 01.75.75v12.59l5.22-5.22a.75.75 0 111.06 1.06l-6.25 6.25a.75.75 0 01-1.06 0l-6.25-6.25a.75.75 0 111.06-1.06L9.25 15.34V2.75A.75.75 0 0110 2z" clipRule="evenodd" /></svg>
                           </button>
                         </div>
